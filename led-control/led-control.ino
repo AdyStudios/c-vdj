@@ -19,4 +19,4 @@ void loop() {
     FastLED.show();
     delay(200);
   }
-}
+} 
