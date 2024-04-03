@@ -55,4 +55,4 @@ void waitingAnim(){
             delay(5);
         }
     }
-}
+} 
