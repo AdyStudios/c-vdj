@@ -1,18 +1,15 @@
 #include <FastLED.h>
-
 #include <Control_Surface.h>
-
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <Fonts/FreeSerif9pt7b.h>
 
 // L E D 
-#define NUM_LEDS 16
-#define DATA_PIN 2
+#define NUM_LEDS 8
+#define DATA_PIN 0
 
 //TODO: connect both led strips into one, so it's easier to control
-#define LED_INTESITY 50
+#define LED_INTESITY 255
 
 CRGB leds[NUM_LEDS];
 
@@ -23,106 +20,80 @@ CRGB leds[NUM_LEDS];
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-bool waiting = true;
+char formattedTime[9];
 
-CRGB randomColor() {
-    return CRGB(random(256), random(256), random(256));
+char* getElapsedTime() {
+    unsigned long elapsedTime = millis();
+    unsigned int seconds = elapsedTime / 1000;
+    unsigned int minutes = seconds / 60;
+    unsigned int hours = minutes / 60;
+    seconds %= 60;
+    minutes %= 60;
+
+    snprintf(formattedTime, 9, "%02lu:%02lu:%02lu", hours, minutes, seconds);
+
+    return formattedTime;
 }
 
 // M I D I
 
 USBMIDI_Interface midi;
 
-const AddressMatrix<5, 5> addresses = {{
-  {1, 2, 3, 4, 5},
-  {6, 7, 8, 9, 10},
-  {11, 12, 13, 14, 15},
-  {16, 17, 18, 19, 20},
+const AddressMatrix<4, 7> addresses = {{
+  {1,2,3,4,5,6,7},
+  {8,9,10,11,12,13,14},
+  {15,16,17,18,19,20,21},
+  {22,23,24,25,26,27,28},
 }};
 
-NoteButtonMatrix<5, 5> buttonmatrix = {
-  {2, 3, 4, 5, 6}, // row pins
-  {7, 8, 9, 10, 11},    // column pins
+NoteButtonMatrix<4, 7> buttonmatrix = {
+  {10,11,12,13}, // row pins
+  {2,3,4,5,6,8,9},    // column pins
   addresses,    // address matrix
   CHANNEL_1,    // channel and cable number
 };
 
+void oledSetup(){
+  // Oled setup
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+}
 
 void setup(){
     Serial.begin(115200);
+    oledSetup();
+
     FastLED.addLeds<WS2812, DATA_PIN, GRB>(leds, NUM_LEDS);
-    Control_Surface.begin();
+    FastLED.setBrightness(LED_INTESITY);
 
-    // Startup animation
-    for(int i; i < NUM_LEDS; i++){
-void ledSetup(){
-  FastLED.addLeds<WS2812, DATA_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.setBrightness(LED_INTESITY);
-  for(int j = 0; j < 2 ; j++){
-    for(int i = 0; i < NUM_LEDS; i++){
-        leds[i] = CRGB(0, 255, 255);
-        FastLED.show();
-        delay(50);
-        leds[i] = CRGB(0, 0, 0);
-        FastLED.show();
-        
-    }
-    for (int i = NUM_LEDS; i --> 0; ){
-        leds[i] = CRGB(0, 255, 255);
-        FastLED.show();
-        delay(50);
-        leds[i] = CRGB(0, 0, 0);
-        FastLED.show();
-        delay(100);
-    }
-
-    // Oled setup
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-      Serial.println(F("SSD1306 allocation failed"));
-    }
-    delay(2000);
-
-    display.clearDisplay();
-
-    display.setTextSize(4);
-    display.setTextColor(WHITE);
-    display.setCursor(0, 10);
-    display.println("Starting UP...");
-    display.display(); 
-    display.startscrollright(0x00, 0x0F);
-    delay(2000);
-    display.stopscroll();
-    display.println("Done!");
-    display.display();
-    }
-  }
-}
-void setup(){
-    ledSetup();
     Control_Surface.begin();
 }
 
 void loop() {
+  //updateOled();
   Control_Surface.loop();
-  if(waiting){
-      waitingAnim();
-    }
 }
 
-void waitingAnim(){
-  for(int i = 0; i < NUM_LEDS; i++){
-      leds[i] = randomColor();
-      FastLED.show();
-      delay(300);
-      for (int j = 255; j >= 0; j--) {
-            leds[i].fadeToBlackBy(10); // Fade the LED
-            FastLED.show();
-            delay(5);
-        }
-    }
-}
+/*void updateOled(){
+  delay(1000);
 
-void onNoteOn(NoteOn& note) {
+  //clear display
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Time on:");
+  display.setTextSize(2);
+  display.setCursor(15,10);
+  display.print(getElapsedTime());
+  
+  display.display(); 
+  
+}*/
+
+/*void onNoteOn(NoteOn& note) {
   int index = note.address() - 1; 
   leds[index] = CRGB::Green; 
   FastLED.show(); 
@@ -132,36 +103,4 @@ void onNoteOff(NoteOff& note) {
   int index = note.address() - 1; 
   leds[index] = CRGB::Black; 
   FastLED.show(); 
-}
-
-void updateOled(){
-  display.setCursor(0, 0);
-  display.setTextSize(1);
-  display.print("Time on: ")
-  display.print(millis());
-
-  display.setCursor(0, 10);
-  
-}
-
-void onNoteOn(NoteOn& note) {
-  int index = note.address() - 1; 
-  leds[index] = CRGB::Green; 
-  FastLED.show(); 
-}
-
-void onNoteOff(NoteOff& note) {
-  int index = note.address() - 1; 
-  leds[index] = CRGB::Black; 
-  FastLED.show(); 
-}
-
-void updateOled(){
-  display.setCursor(0, 0);
-  display.setTextSize(1);
-  display.print("Time on: ")
-  display.print(millis());
-
-  display.setCursor(0, 10);
-  
-}
+}*/
